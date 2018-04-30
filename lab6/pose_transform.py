@@ -7,16 +7,20 @@ This is starter code for Lab 6 on Coordinate Frame transforms.
 
 import asyncio
 import cozmo
-import numpy
+import numpy as np
 from cozmo.util import degrees
 
 def get_relative_pose(object_pose, reference_frame_pose):
-	# ####
-	# TODO: Implement computation of the relative frame using numpy.
-	# Try to derive the equations yourself and verify by looking at
-	# the books or slides before implementing.
-	# ####
-	return None
+	#getting relative translation
+	relative_position = np.subtract(object_pose.position, reference_frame_pose.position)
+	#getting relative rotation(note: this is only working in z)
+	relative_angle = object_pose.rotation.angle_z - reference_frame_pose.rotation.angle_z
+
+	#this function would have been able to be written much easier if there was a straightforward way to go from a 4x4 rotation matrix to a pose
+	#Cozmo's SDK makes it easy to go from a post to a 4x4 rotation matrix, but not the other way
+	#if going the other way was available, then everything could be computed easily as a division on 4x4 rotation matrices
+
+	return cozmo.util.pose_z_angle(relative_position.x, relative_position.y, relative_position.z, relative_angle)
 
 def find_relative_cube_pose(robot: cozmo.robot.Robot):
 	'''Looks for a cube while sitting still, prints the pose of the detected cube
