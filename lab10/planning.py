@@ -4,12 +4,20 @@
 
 from grid import *
 from visualizer import *
+import numpy as np
 import threading
 from queue import PriorityQueue
 import math
 import cozmo
+import copy
 
-
+def reconstructPath(cameFromMap, final, start):
+    path = [final]
+    current = final
+    while not (current[0] == start [0] and current[1] == start[1]):
+        current = cameFromMap[current[0]][current[1]]
+        path.insert(0, current)
+    return path
 
 def astar(grid, heuristic):
     """Perform the A* search algorithm on a defined grid
@@ -18,8 +26,48 @@ def astar(grid, heuristic):
         grid -- CozGrid instance to perform search on
         heuristic -- supplied heuristic function
     """
+    goal = grid.getGoals()[0]
+    startCell = grid.getStart()
+    grid.clearVisited()
+
+    residualEstimate = heuristic(startCell, goal)
+    currentWeight = 0
+
+    cameFrom = np.zeros((grid.width, grid.height)).tolist()
+
+    goToScore = (np.ones((grid.width, grid.height)) * float("inf")).tolist()
+    goToScore[startCell[0]][startCell[1]] = currentWeight
+
+    frontier = {}
+    frontier[tuple(startCell)] = residualEstimate
+
+    while len(frontier.keys()) > 0:
+        currentCell = sorted(frontier.items(), key =lambda x:x[1])[0][0]
+        frontier.pop(currentCell)
+        grid.addVisited(currentCell)
         
-    pass # Your code here
+        if(currentCell[0] == goal[0] and currentCell[1] == goal[1]):
+            grid.setPath(reconstructPath(cameFrom, currentCell, startCell))
+            return
+
+        for neighborData in grid.getNeighbors(currentCell):
+            neighbor = neighborData[0]
+            weight = neighborData[1]
+
+            if neighborData[0] in grid.getVisited():
+                continue
+            
+
+            tentative_goToScore = goToScore[currentCell[0]][currentCell[1]] + weight
+            if tentative_goToScore > goToScore[neighbor[0]][neighbor[1]]:
+                continue
+            
+            # if we got here, we are on the best path to the neighbor node so far
+            cameFrom[neighbor[0]][neighbor[1]] =  currentCell
+            goToScore[neighbor[0]][neighbor[1]] = tentative_goToScore
+            frontierScore = goToScore[neighbor[0]][neighbor[1]] + heuristic(neighbor, goal)
+            frontier[tuple(neighbor)] = frontierScore
+pass 
 
 
 def heuristic(current, goal):
@@ -29,8 +77,12 @@ def heuristic(current, goal):
         current -- current cell
         goal -- desired goal cell
     """
-        
-    return 1 # Your code here
+    curr_x = current[0]
+    curr_y = current[1]
+    goal_x = goal[0]
+    goal_y = goal[1]
+    # simple manhattan distance. an admissible heuristic for instances where we cannot move diagonally
+    return math.sqrt((curr_y - goal_y)**2 + (curr_x - goal_x)**2)
 
 
 def cozmoBehavior(robot: cozmo.robot.Robot):
