@@ -178,7 +178,7 @@ def cozmoBehavior(robot: cozmo.robot.Robot):
             robot.drive_straight(cozmo.util.distance_mm(math.sqrt(dx*dx + dy*dy)), cozmo.util.speed_mmps(25)).wait_for_completed()
             cubes_again = [robot.world.get_light_cube(cozmo.objects.LightCube1Id), robot.world.get_light_cube(cozmo.objects.LightCube2Id), robot.world.get_light_cube(cozmo.objects.LightCube3Id)]
             need_to_recalc_path = (not obstacle_one_found and is_cube_found(cubes_again[1])) or (not obstacle_two_found and is_cube_found(cubes_again[2])) or (not goal_cube_found and cubes_again(cubes[0])):
-            if(need_to_recalc_path)
+            if(need_to_recalc_path):
                 grid.setStart(robot_pose_to_coords(robot.pose, grid))
                 if not goal_cube_found:
                     grid.clearGoals()
