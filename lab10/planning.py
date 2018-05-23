@@ -105,34 +105,39 @@ def cozmoBehavior(robot: cozmo.robot.Robot):
         robot -- cozmo.robot.Robot instance, supplied by cozmo.run_program
     """
         
-    global grid, stopevent
+    global grid, stopevent, goal_cube_found, obstacle_one_found, obstacle_two_found, goal_cube_pose
     print("starting cozmo behavior")
     robot.set_head_angle(cozmo.util.degrees(0)).wait_for_completed()
+    goal_cube_found = False
+    obstacle_one_found = False
+    obstacle_two_found = False
+    # initially, clear the grid and initialize the robot's position
+    grid.clearObstacles()
+    grid.setStart(robot_pose_to_coords(robot.pose, grid))    
 
     while not stopevent.is_set():
         
-        print("entering loop")
-        # initially, clear the grid and initialize the robot's position
-        grid.clearObstacles()
-        grid.setStart(robot_pose_to_coords(robot.pose, grid))    
+        print("entering loop beginning")
         # get the cube locations
         print("getting cubes")
         cubes = [robot.world.get_light_cube(cozmo.objects.LightCube1Id), robot.world.get_light_cube(cozmo.objects.LightCube2Id), robot.world.get_light_cube(cozmo.objects.LightCube3Id)]
-        desired_angle = cubes[0].pose.rotation.angle_z.degrees
 
         # Fill in obstacles based on the non-goal cubes
-        if is_cube_found(cubes[1]):
+        if not obstacle_one_found and is_cube_found(cubes[1]):
             print("found cube 1")
             grid.addObstacles([robot_pose_to_coords(cubes[1].pose, grid)])
-        if is_cube_found(cubes[2]):
+            obstacle_one_found = True
+        if not obstacle_two_found and is_cube_found(cubes[2]):
             print("found cube 2")
             grid.addObstacles([robot_pose_to_coords(cubes[2].pose, grid)])
-            
+            obstacle_two_found = True
 
         # If we found the goal cube, mark it as the goal
-        if is_cube_found(cubes[0]):
+        if not goal_cube_found and is_cube_found(cubes[0]):
             print("found cube  (goal)")
             grid.clearGoals()
+            goal_cube_found = True
+            goal_cube_pose = cubes[0].pose
             target_coords = robot_pose_to_coords(cubes[0].pose, grid)
             print("goal cube at {0}".format(target_coords))
             approach_x = approach_y = 0
@@ -154,6 +159,11 @@ def cozmoBehavior(robot: cozmo.robot.Robot):
             print("moving to middle of grid")
             grid.addGoal((int(grid.width/2), int(grid.height/2)))
 
+        desired_angle = None
+        if goal_cube_found:
+            desired_angle = goal_cube_pose.rotation.angle_z.degrees
+
+
         # Run A* with the collected goal and obstacle info
         print("running astar")
         astar(grid, heuristic)
@@ -166,8 +176,13 @@ def cozmoBehavior(robot: cozmo.robot.Robot):
             dh = cozmo.util.radians(math.atan2(dy, dx)) - robot.pose.rotation.angle_z
             robot.turn_in_place(dh).wait_for_completed()
             robot.drive_straight(cozmo.util.distance_mm(math.sqrt(dx*dx + dy*dy)), cozmo.util.speed_mmps(25)).wait_for_completed()
-        #turn the correct direction
-        robot.turn_in_place(cozmo.util.degrees(desired_angle - robot.pose.rotation.angle_z.degrees)).wait_for_completed()
+            cubes_again = [robot.world.get_light_cube(cozmo.objects.LightCube1Id), robot.world.get_light_cube(cozmo.objects.LightCube2Id), robot.world.get_light_cube(cozmo.objects.LightCube3Id)]
+            need_to_recalc_path = (not obstacle_one_found and is_cube_found(cubes_again[1])) or (not obstacle_two_found and is_cube_found(cubes_again[2])) or (not goal_cube_found and cubes_again(cubes[0])):
+            if(need_to_recalc_path)
+                grid.setStart(robot_pose_to_coords(robot.pose, grid))
+                if not goal_cube_found:
+                    grid.clearGoals()
+                break
 
         #if we are at the cube (with some allowed distance), turn the correct direction and stop
         if math.sqrt((robot.pose.position.x - cubes[0].pose.position.x)**2 + (robot.pose.position.y - cubes[0].pose.position.y)**2) < 300:
