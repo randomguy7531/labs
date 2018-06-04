@@ -44,7 +44,12 @@ class ValueIterationAgent(ValueEstimationAgent):
         self.values = util.Counter() # A Counter is a dict with default 0
 
         # Write value iteration code here
-        "*** YOUR CODE HERE ***"
+        for i in range(iterations):
+            next_values = util.Counter()
+            for state in mdp.getStates():
+                q, _ = self.computeActionFromSuppliedValues(state, self.values)
+                next_values[state] = q
+            self.values = next_values
 
 
     def getValue(self, state):
@@ -53,14 +58,33 @@ class ValueIterationAgent(ValueEstimationAgent):
         """
         return self.values[state]
 
+    def computeQValueFromSuppliedValues(self, state, action, values):
+        q = 0
+        for transition_state, likelyhood in self.mdp.getTransitionStatesAndProbs(state, action):
+            transition_reward = self.mdp.getReward(state, action, transition_state)
+            q += (self.discount * values[transition_state] + transition_reward) * likelyhood
+        return q
 
     def computeQValueFromValues(self, state, action):
         """
           Compute the Q-value of action in state from the
           value function stored in self.values.
         """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        return self.computeQValueFromSuppliedValues(state, action, self.values)
+
+    def computeActionFromSuppliedValues(self, state, values):
+        actions = self.mdp.getPossibleActions(state)
+        if len(actions) > 0 :
+            q_values = []
+            for action in actions:
+                q_values.append(self.computeQValueFromSuppliedValues(state, action, values))
+            actions_with_q = list(zip(q_values, actions))
+            max_q_and_action = max(actions_with_q, key=(lambda action_with_q: action_with_q[0]))
+            return max_q_and_action
+        # handle the no actions case
+        default_q = [0]
+        default_action = [None]
+        return list(zip(default_q, default_action))[0]
 
     def computeActionFromValues(self, state):
         """
@@ -71,8 +95,7 @@ class ValueIterationAgent(ValueEstimationAgent):
           there are no legal actions, which is the case at the
           terminal state, you should return None.
         """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        return self.computeActionFromSuppliedValues(state, self.values)[1]
 
     def getPolicy(self, state):
         return self.computeActionFromValues(state)
